@@ -16,7 +16,7 @@ public:
     scan_subscription_ = this->create_subscription<sensor_msgs::msg::LaserScan>(
         "scan", 10, std::bind(&Patrol::scan_callback, this, _1));
     timer_ =
-        this->create_wall_timer(50ms, std::bind(&Patrol::timer_callback, this));
+        this->create_wall_timer(5ms, std::bind(&Patrol::timer_callback, this));
   }
 
 private:
@@ -37,33 +37,51 @@ private:
     int largest_index = 360;
     float largest_dist = msg->ranges[largest_index];
     RCLCPP_INFO(this->get_logger(), "Initial largest_dist %f", largest_dist);
-    // if (isinf(largest_dist)) {
-    //   largest_dist = 0;
-    //   RCLCPP_INFO(this->get_logger(), "Initially infinity, setting to zero");
-    // }
+    if (isinf(largest_dist)) {
+      largest_dist = 0;
+      RCLCPP_INFO(this->get_logger(), "Initially infinity, setting to zero");
+    }
 
-    int left_index = 0;
-    int right_index = 0;
-
-    for (int i = 0; i < 180; i++) {
-      left_index = 360 - i;
-      if (msg->ranges[left_index] > largest_dist) {
-        largest_index = left_index;
-        largest_dist = msg->ranges[left_index];
+    // Check if the front is clear
+    bool is_front_clear = true;
+    for (int i = 330; i <= 390; i++) {
+      if (msg->ranges[i] < 0.75) {
+        is_front_clear = false;
+        break;
       }
+    }
 
-      right_index = 360 + i;
-      if (msg->ranges[right_index] > largest_dist) {
-        largest_index = right_index;
-        largest_dist = msg->ranges[right_index];
+    if (is_front_clear) {
+      direction_ = 0;
+    } else {
+      int left_index = 0;
+      int right_index = 0;
+      for (int i = 0; i < 180; i++) {
+        left_index = 360 - i;
+        if ((!isinf(msg->ranges[left_index])) &&
+            msg->ranges[left_index] >= largest_dist) {
+          largest_index = left_index;
+          largest_dist = msg->ranges[left_index];
+        }
+        right_index = 360 + i;
+        if ((!isinf(msg->ranges[right_index])) &&
+            msg->ranges[right_index] >= largest_dist) {
+          largest_index = right_index;
+          largest_dist = msg->ranges[right_index];
+        }
       }
+      direction_ = (largest_index / 720.0) * 2 * M_PI - M_PI;
+    }
+
+    RCLCPP_INFO(this->get_logger(), "Scan:");
+    for (int i = 540; i >= 180; i = i - 10) {
+      RCLCPP_INFO(this->get_logger(), "%d -> %f", i, msg->ranges[i]);
     }
 
     // if (msg->ranges[360] >= 1.5) {
     //   RCLCPP_INFO(this->get_logger(), "Front is clear!");
     //   direction_ = 0;
     // } else {
-    direction_ = (largest_index / 720.0) * 2 * M_PI - M_PI;
     // }
 
     // if (largest_index < 360) {
