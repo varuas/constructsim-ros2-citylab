@@ -16,7 +16,7 @@ public:
     scan_subscription_ = this->create_subscription<sensor_msgs::msg::LaserScan>(
         "scan", 10, std::bind(&Patrol::scan_callback, this, _1));
     timer_ =
-        this->create_wall_timer(5ms, std::bind(&Patrol::timer_callback, this));
+        this->create_wall_timer(20ms, std::bind(&Patrol::timer_callback, this));
   }
 
 private:
@@ -48,12 +48,12 @@ private:
       }
     }
 
-    if (smallest_dist > 0.25) {
-      // Turn towards the farthest object
-      direction_ = (largest_index / 720.0) * 2 * M_PI - M_PI;
-    } else {
+    if (smallest_dist <= 0.25) {
       // obstacle right in front, make a hard turn
       direction_ = smallest_index > 360 ? -M_PI / 2 : M_PI / 2;
+    } else {
+      // Turn towards the farthest object
+      direction_ = (largest_index / 720.0) * 2 * M_PI - M_PI;
     }
   }
   rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr
