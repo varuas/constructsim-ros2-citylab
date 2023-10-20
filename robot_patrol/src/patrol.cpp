@@ -43,9 +43,12 @@ private:
     }
 
     // Check if the front is clear
+    int front_angle_delta = 90;
+    float front_distance = 0.5;
+
     bool is_front_clear = true;
-    for (int i = 330; i <= 390; i++) {
-      if (msg->ranges[i] < 0.75) {
+    for (int i = 360 - front_angle_delta; i <= 360 + front_angle_delta; i++) {
+      if (msg->ranges[i] < front_distance) {
         is_front_clear = false;
         break;
       }
@@ -54,20 +57,16 @@ private:
     if (is_front_clear) {
       direction_ = 0;
     } else {
-      int left_index = 0;
-      int right_index = 0;
-      for (int i = 0; i < 180; i++) {
-        left_index = 360 - i;
-        if ((!isinf(msg->ranges[left_index])) &&
-            msg->ranges[left_index] >= largest_dist) {
-          largest_index = left_index;
-          largest_dist = msg->ranges[left_index];
+      for (int i = 180; i <= 540; i++) {
+        if (isinf(msg->ranges[i])) {
+          continue;
         }
-        right_index = 360 + i;
-        if ((!isinf(msg->ranges[right_index])) &&
-            msg->ranges[right_index] >= largest_dist) {
-          largest_index = right_index;
-          largest_dist = msg->ranges[right_index];
+        // if (i > (360 - front_angle_delta) && i < (360 + front_angle_delta)) {
+        //   continue;
+        // }
+        if (msg->ranges[i] >= largest_dist) {
+          largest_index = i;
+          largest_dist = msg->ranges[i];
         }
       }
       direction_ = (largest_index / 720.0) * 2 * M_PI - M_PI;
@@ -92,10 +91,12 @@ private:
     //   direction_ = -1.0 * (720 - largest_index) / 360 * M_PI;
     // }
 
-    RCLCPP_INFO(this->get_logger(), "Idx: %d, Dist: %f, Direction: %f",
-                largest_index, largest_dist, direction_);
+    RCLCPP_INFO(this->get_logger(), "Is Front Clear? %s",
+                is_front_clear ? "TRUE" : "FALSE");
     RCLCPP_INFO(this->get_logger(), "Left: %f, Middle: %f, Right: %f",
                 msg->ranges[540], msg->ranges[360], msg->ranges[180]);
+    RCLCPP_INFO(this->get_logger(), "Idx: %d, Dist: %f, Direction: %f",
+                largest_index, largest_dist, direction_);
   }
   rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr
       scan_subscription_;
