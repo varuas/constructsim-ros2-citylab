@@ -22,81 +22,39 @@ public:
 private:
   void timer_callback() {
     auto message = geometry_msgs::msg::Twist();
-    // message.linear.x = 0;
-    // message.angular.z = 0;
     message.linear.x = 0.1;
     message.angular.z = direction_ / 2.0;
     move_publisher_->publish(message);
-    // RCLCPP_INFO(this->get_logger(), "Velocity: Lin:%f, Ang:%f",
-    //             message.linear.x, message.angular.z);
   }
 
   void scan_callback(const sensor_msgs::msg::LaserScan::SharedPtr msg) {
 
-    RCLCPP_INFO(this->get_logger(), "START -------->");
-    int largest_index = 360;
-    float largest_dist = msg->ranges[largest_index];
-    RCLCPP_INFO(this->get_logger(), "Initial largest_dist %f", largest_dist);
-    if (isinf(largest_dist)) {
-      largest_dist = 0;
-      RCLCPP_INFO(this->get_logger(), "Initially infinity, setting to zero");
-    }
+    int largest_index = 180;
+    float largest_dist = 0;
+    int smallest_index = 180;
+    float smallest_dist = 99;
 
-    // Check if the front is clear
-    int front_angle_delta = 90;
-    float front_distance = 0.5;
-
-    bool is_front_clear = true;
-    for (int i = 360 - front_angle_delta; i <= 360 + front_angle_delta; i++) {
-      if (msg->ranges[i] < front_distance) {
-        is_front_clear = false;
-        break;
+    for (int i = 180; i <= 540; i++) {
+      if (isinf(msg->ranges[i])) {
+        continue;
+      }
+      if (msg->ranges[i] > largest_dist) {
+        largest_index = i;
+        largest_dist = msg->ranges[i];
+      }
+      if (msg->ranges[i] < smallest_dist) {
+        smallest_index = i;
+        smallest_dist = msg->ranges[i];
       }
     }
 
-    if (is_front_clear) {
-      direction_ = 0;
-    } else {
-      for (int i = 180; i <= 540; i++) {
-        if (isinf(msg->ranges[i])) {
-          continue;
-        }
-        // if (i > (360 - front_angle_delta) && i < (360 + front_angle_delta)) {
-        //   continue;
-        // }
-        if (msg->ranges[i] >= largest_dist) {
-          largest_index = i;
-          largest_dist = msg->ranges[i];
-        }
-      }
+    if (smallest_dist > 0.25) {
+      // Turn towards the farthest object
       direction_ = (largest_index / 720.0) * 2 * M_PI - M_PI;
+    } else {
+      // obstacle right in front, make a hard turn
+      direction_ = smallest_index > 360 ? -M_PI / 2 : M_PI / 2;
     }
-
-    RCLCPP_INFO(this->get_logger(), "Scan:");
-    for (int i = 540; i >= 180; i = i - 10) {
-      RCLCPP_INFO(this->get_logger(), "%d -> %f", i, msg->ranges[i]);
-    }
-
-    // if (msg->ranges[360] >= 1.5) {
-    //   RCLCPP_INFO(this->get_logger(), "Front is clear!");
-    //   direction_ = 0;
-    // } else {
-    // }
-
-    // if (largest_index < 360) {
-    //   RCLCPP_INFO(this->get_logger(), "index less than 360");
-    //   direction_ = (largest_index / 360.0) * M_PI;
-    // } else {
-    //   RCLCPP_INFO(this->get_logger(), "index greater than 360");
-    //   direction_ = -1.0 * (720 - largest_index) / 360 * M_PI;
-    // }
-
-    RCLCPP_INFO(this->get_logger(), "Is Front Clear? %s",
-                is_front_clear ? "TRUE" : "FALSE");
-    RCLCPP_INFO(this->get_logger(), "Left: %f, Middle: %f, Right: %f",
-                msg->ranges[540], msg->ranges[360], msg->ranges[180]);
-    RCLCPP_INFO(this->get_logger(), "Idx: %d, Dist: %f, Direction: %f",
-                largest_index, largest_dist, direction_);
   }
   rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr
       scan_subscription_;
