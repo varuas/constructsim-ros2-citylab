@@ -9,7 +9,7 @@ using std::placeholders::_2;
 class DirectionService : public rclcpp::Node {
 
 public:
-  DirectionService() : Node("/direction_service_node") {
+  DirectionService() : Node("direction_service_node") {
     srv_ = create_service<GetDirection>(
         "direction_service",
         std::bind(&DirectionService::direction_callback, this, _1, _2));
