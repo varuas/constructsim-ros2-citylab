@@ -55,6 +55,8 @@ private:
       }
     }
 
+    RCLCPP_INFO(this->get_logger(), "Left [%f]   Front [%f]   Right [%f]", total_dist_sec_left, total_dist_sec_front, total_dist_sec_right);
+
     if (total_dist_sec_right > total_dist_sec_front &&
         total_dist_sec_right > total_dist_sec_left) {
       response->direction = "right";
@@ -64,6 +66,8 @@ private:
     } else {
       response->direction = "left";
     }
+
+      RCLCPP_INFO(this->get_logger(), "Direction: %s", response->direction.c_str());
   }
 };
 
