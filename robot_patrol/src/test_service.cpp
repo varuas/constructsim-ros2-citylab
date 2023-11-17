@@ -1,5 +1,6 @@
 #include "custom_interfaces/srv/detail/get_direction__struct.hpp"
 #include "custom_interfaces/srv/get_direction.hpp"
+#include "rclcpp/executors.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/laser_scan.hpp"
 
@@ -46,6 +47,7 @@ private:
     } else {
       RCLCPP_INFO(this->get_logger(), "Service Call Timed out");
     }
+    is_test_completed = true;
   }
 
 public:
@@ -54,11 +56,15 @@ public:
     scan_subscription_ = this->create_subscription<sensor_msgs::msg::LaserScan>(
         "scan", 10, std::bind(&TestService::scan_callback, this, _1));
   }
+  bool is_test_completed = false;
 };
 
 int main(int argc, char *argv[]) {
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<TestService>());
+  auto node = std::make_shared<TestService>();
+  while (!node->is_test_completed) {
+    rclcpp::spin_some(node);
+  }
   rclcpp::shutdown();
   return 0;
 }
