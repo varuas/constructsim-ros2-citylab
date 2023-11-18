@@ -61,7 +61,9 @@ private:
   rclcpp_action::GoalResponse
   handle_goal(const rclcpp_action::GoalUUID &uuid,
               std::shared_ptr<const GoToPoseAct::Goal> goal) {
-    RCLCPP_INFO(this->get_logger(), "Received goal request");
+    RCLCPP_INFO(this->get_logger(),
+                "Received goal request: X=%f, Y=%f, Theta=%f", goal->goal_pos.x,
+                goal->goal_pos.y, goal->goal_pos.theta);
     (void)uuid;
     return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
   }
@@ -90,6 +92,7 @@ private:
     auto result = std::make_shared<GoToPoseAct::Result>();
     auto move = geometry_msgs::msg::Twist();
     auto feedback = std::make_shared<GoToPoseAct::Feedback>();
+    auto &feedback_pos = feedback->current_pos;
 
     int mode = 0; // 0 -> Move to goal, 1 -> Rotate after reaching goal
     const double GOAL_DIST_TOLERANCE = 0.05;
@@ -126,9 +129,12 @@ private:
                   current_pos_.theta, vector_theta, theta_delta);
 
       move.angular.z = theta_delta;
-      move.linear.x = mode == 0 ? 0.2 : 0;
+      move.linear.x = mode == 0 ? 0.1 : 0;
       publisher_->publish(move);
-      feedback->current_pos = current_pos_;
+
+      feedback_pos.x = current_pos_.x;
+      feedback_pos.y = current_pos_.y;
+      feedback_pos.theta = current_pos_.theta * 180.0 / M_PI;
       goal_handle->publish_feedback(feedback);
 
       if (mode == 1 && abs(theta_delta) < GOAL_THETA_TOLERANCE) {
@@ -144,18 +150,6 @@ private:
 
       loop_rate.sleep();
     }
-
-    // Comment
-    // for (int i = 0; (i < goal->secs) && rclcpp::ok(); ++i) {
-    //   // Check if there is a cancel request
-
-    //   // Move robot forward and send feedback
-    //   message = "Moving forward...";
-    //   move.linear.x = 0.3;
-    //   publisher_->publish(move);
-    //   goal_handle->publish_feedback(feedback);
-    //   RCLCPP_INFO(this->get_logger(), "Publish feedback");
-    // }
 
     // Check if goal is done
     if (rclcpp::ok()) {
