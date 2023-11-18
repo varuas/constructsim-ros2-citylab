@@ -84,6 +84,8 @@ private:
 
     RCLCPP_INFO(this->get_logger(), "Executing goal");
     desired_pos_ = goal_handle->get_goal()->goal_pos;
+    // Convert theta from degrees to radians
+    desired_pos_.theta = desired_pos_.theta * M_PI / 180.0;
 
     auto result = std::make_shared<GoToPoseAct::Result>();
     auto move = geometry_msgs::msg::Twist();
@@ -129,7 +131,7 @@ private:
       feedback->current_pos = current_pos_;
       goal_handle->publish_feedback(feedback);
 
-      if (mode == 1 && abs(theta_delta < GOAL_THETA_TOLERANCE)) {
+      if (mode == 1 && abs(theta_delta) < GOAL_THETA_TOLERANCE) {
         break;
       }
 
